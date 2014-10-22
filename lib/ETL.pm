@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 #########################################################################################################
-#Function:              ECIF 公用模块
+#Function:              ETL 公用模块
 #Author:                WuGang
 #Date Time:
 #History:
 #Copyright              2011 VanceInfo All Rights Reserved.
 #########################################################################################################
-package ECIF;
+package ETL;
 use strict;
 use MIME::Base64;
 use Crypt::RC4;
@@ -24,7 +24,6 @@ use CharCrypt;
 use IO::Handle;
 use Fcntl ':flock';
 use Time::HiRes;
-use ETL;
 use Digest::MD5;
 
 
@@ -39,7 +38,7 @@ BEGIN{
         netware => 'ECIF_NT',
         linux   => 'ECIF_Unix'
     );
-    
+
     my $module = $module{lc($^O)} || 'ECIF_Unix';
     require "$module.pm";
     our(@ISA, @EXPORT);
@@ -174,7 +173,7 @@ sub isValidDate{
     }else{
         $yyyymmdd{"02"} = 28;
     }
-    
+
     if(!exists $yyyymmdd{$mm}){return 0;}   #月份必须在[01,12]区间
     my $maxDD = $yyyymmdd{$mm};             #该月份最大的日期
 
@@ -190,14 +189,14 @@ sub getCurDateTime
 {
    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
    my $current = "";
-   
+
    $year += 1900;
    $mon = sprintf("%02d", $mon + 1);
    $mday = sprintf("%02d", $mday);
    $hour = sprintf("%02d", $hour);
    $min  = sprintf("%02d", $min);
    $sec  = sprintf("%02d", $sec);
-   
+
    $current = "${year}-${mon}-${mday} ${hour}:${min}:${sec}";
 
    return $current;
@@ -206,11 +205,11 @@ sub getCurDateTime
 #获得当前八位日期
 sub getCurDate{
    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
-   
+
    $year += 1900;
    $mon = sprintf("%02d", $mon + 1);
    $mday = sprintf("%02d", $mday);
-   
+
    return "${year}${mon}${mday}";
 }
 
@@ -264,7 +263,7 @@ sub getDbh{
         $dbh = DBI->connect("$driver", $username, $passwd,
                           { AutoCommit => 1 ###  AutoCommit
 #                           PrintError => 0, ### Don't report errors via warn()
-#                           RaiseError => 0  ### Don't report errors via die() 
+#                           RaiseError => 0  ### Don't report errors via die()
                           } ) or warning "Can't connect to '$driver': $DBI::errstr.";
         if($dbh){
             return $dbh
@@ -318,7 +317,7 @@ sub insertEventLog{
     }
     if($ETL::EVENT_LOG_FLAG eq '1' && (uc($severity) eq 'H' || uc($severity) eq 'M')){
         my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time());
-        
+
         $hour = sprintf("%02d", $hour);
         $min  = sprintf("%02d", $min);
         $sec  = sprintf("%02d", $sec);
@@ -391,11 +390,11 @@ sub sendEODMsg{
       SOAP::Lite->proxy(
         "$cps_webservice_proxy")
       ->uri("$cps_webservice_uri") or do{error($!);return 0};
-    
+
     my $result = $soap->ackEvent(
         SOAP::Data->name( 'eventName' => "$msg" )
     ) or do{error($!);return 0};
-    
+
     if($result->fault){
         error("EOD Msg sended failed, faultstring\t:", Encode::CN::encode( "gb2312", $result->faultstring));
         return 0;
@@ -428,13 +427,13 @@ sub sendMDSMsg{
       SOAP::Lite->proxy(
         "$webservice_proxy")
       ->uri("$webservice_uri") or do{error($!);return 0};
-    
+
     my $result = $soap->mdsService(
         SOAP::Data->name( args0 => $msg),
         SOAP::Data->name( args1 => 'S'),
         SOAP::Data->name( args2 => $txdate)
     ) or do{error($!);return 0};
-    
+
     if($result->fault){
         error("MDS Msg sended failed, faultstring\t:", Encode::CN::encode( "gb2312", $result->faultstring));
         return 0;
@@ -481,11 +480,11 @@ sub sendSMSMsg{
       SOAP::Lite->proxy(
         "http://$server$address")
       ->uri('http://cxt.com/ws/service/') or error($!);
-    
+
     my $result = $soap->c210Service(
         SOAP::Data->name( 'req' => \%reqHead )
     ) or error($!);
-    
+
     if($result->fault){
         error("SMS Msg sended failed, faultstring\t:", Encode::CN::encode( "gb2312", $result->faultstring));
         return 0;
@@ -519,11 +518,11 @@ sub sendFTPMsg{
       SOAP::Lite->proxy(
         "$server")
       ->uri('http://service.print.hiaward.com/') or error($!);
-    
+
     my $result = $soap->updateCache(
         SOAP::Data->name( 'filename' => "$msg" )
     ) or error($!);
-    
+
     if($result->fault){
         error("FTP Msg sended failed, faultstring\t:", Encode::CN::encode( "gb2312", $result->faultstring));
         return 0;
@@ -611,10 +610,10 @@ sub checkBrmsStat{
     my($table_name,$tx_date) = @_;
     my $yesterday = dateCalc($tx_date,-1);
     #check yesterday's status
-    my $dbh = getDbhByTag('BRMS_DB2');   
-    my $sql_text = "SELECT JOB_STATUS 
-                    FROM PMART.ECIF_JOB_STATUS 
-                    WHERE BIZ_DT = TO_DATE('$yesterday','YYYYMMDD') 
+    my $dbh = getDbhByTag('BRMS_DB2');
+    my $sql_text = "SELECT JOB_STATUS
+                    FROM PMART.ECIF_JOB_STATUS
+                    WHERE BIZ_DT = TO_DATE('$yesterday','YYYYMMDD')
                         AND JOB_NAME='$table_name';";
     my $sth = $dbh->prepare($sql_text) or fatal("$DBI::errstr");
     #check it every minute.if not ready,warn and wait.throw alert every 30 minutes.
@@ -657,7 +656,7 @@ sub checkBrmsStat{
     $sth->finish();
     $dbh->disconnect();
     info("check BRMS status pass.");
-    return 0;       
+    return 0;
 }
 
 #插入回单通知
@@ -677,7 +676,7 @@ sub insertBrmsMessage{
     $dbh->do( "DELETE FROM PMART.ECIF_JOB_STATUS
                WHERE  BIZ_DT = TO_DATE('$tx_date','YYYYMMDD')
                  AND  JOB_NAME='$table_name'");
-    $dbh->do( "INSERT INTO PMART.ECIF_JOB_STATUS 
+    $dbh->do( "INSERT INTO PMART.ECIF_JOB_STATUS
                VALUES ('$table_name'
                       ,TO_DATE('$tx_date','YYYYMMDD')
                       ,'0'
@@ -693,10 +692,10 @@ sub insertBrmsMessage{
 sub checkBrmsMessage{
     my($table_name,$tx_date) = @_;
     #check today's status
-    my $dbh = getDbhByTag('BRMS_DB2');   
-    my $sql_text = "SELECT JOB_STATUS 
-                    FROM PMART.ECIF_JOB_STATUS 
-                    WHERE BIZ_DT = TO_DATE('$tx_date','YYYYMMDD') 
+    my $dbh = getDbhByTag('BRMS_DB2');
+    my $sql_text = "SELECT JOB_STATUS
+                    FROM PMART.ECIF_JOB_STATUS
+                    WHERE BIZ_DT = TO_DATE('$tx_date','YYYYMMDD')
                         AND JOB_NAME='$table_name';";
     my $sth = $dbh->prepare($sql_text) or fatal("$DBI::errstr");
     #check it every minute.if not ready,warn and wait.throw alert every 30 minutes.
@@ -739,7 +738,7 @@ sub checkBrmsMessage{
     $sth->finish();
     $dbh->disconnect();
     info("check BRMS status pass.");
-    return 0;       
+    return 0;
 }
 
 #删除回单通知 如果重跑，应该在下发数据前就删除，避免回单开始处理
