@@ -5,11 +5,11 @@ my $tmp_string;
 
 #begin date
 my $year = 2012;
-my $month = 12;
+my $month = 1;
 my $day = 1;
 
 #end date
-my $endyear = 2012;
+my $endyear = 2020;
 my $endmonth = 12;
 my $endday = 31;
 
@@ -21,26 +21,25 @@ while (1)
 {
     #daily
     $tmp_string = "${year}年${month}月${day}日";
-    print $tmp_string;
+    #print $tmp_string;
     #monthly
-    print Days_in_Month($year,$month);
     if ($day == Days_in_Month($year,$month))
     {
         $tmp_string = "${year}年${month}月";
-        print $tmp_string;
+        #print $tmp_string;
     }
     #quartly
     if ( $day == Days_in_Month($year,$month )
             && exists ${season}{$month})
     {
         $tmp_string = "${year}年第${season{$month}}季度";
-        print $tmp_string;
+        #print $tmp_string;
     }
     #yearly
     if ( $month == 12 && $day == 31 )
     {
         $tmp_string = "${year}年";
-        print $tmp_string;
+        #print $tmp_string;
     }
 
     #add a day
